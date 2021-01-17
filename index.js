@@ -15,36 +15,37 @@ function LightAccessory(log, config) {
 	this.log = log;
 	
 	// Configuration
-	this.name = config["name"];
-	this.lightName = config["light_name"] || this.name; // fallback to "name" if you didn't specify an exact "light_name"    
+	this.name 			= config["name"];
+	this.lightName 		= config["light_name"] || this.name; // fallback to "name" if you didn't specify an exact "light_name"
+	this.host 			= config["host"] || "127.0.0.1";    
     // Accessory information
-    this.manufacturer    = config["manufacturer"] || "MurchHome";
-    this.model           = config["model"] || "MH-Light";
-    this.serial          = config["serial"] || "LT-0001";	
+    this.manufacturer   = config["manufacturer"] || "MurchHome";
+    this.model          = config["model"] || "MH-Light";
+    this.serial         = config["serial"] || "LT-0001";	
 	// Light
-	this.switchAddr = config["switchAddr"] || 16394;    // Modbus address on remote PLC to switch light on/off (momentary/ push button)
-	this.statusAddr = config["statusAddr"] || 16994;    // Modbus address on remote PLC to read status of light
+	this.switchAddr 	= config["switchAddr"] || 16394;    // Modbus address on remote PLC to switch light on/off (momentary/ push button)
+	this.statusAddr 	= config["statusAddr"] || 16994;    // Modbus address on remote PLC to read status of light
   
 }
 
-function getData(pilot, callback) {
+function getData(pilot, host, callback) {
     var param = 'raddr=' + pilot + '&rtype=c';
-	sendData(param, function(res) {
+	sendData(param,host,function(res) {
 		callback(res);
 	});
 }
 
-function getSetData(pilot,button,callback) {
+function getSetData(pilot, button, host, callback) {
 	var param = 'write=true&waddr=' + button + '&wtype=c&wmode=mom&raddr=' + pilot + '&rtype=c';
-	sendData(param, function(res) {
+	sendData(param,host,function(res) {
 		callback(res);
 	});		
 }
 
-function sendData(param, callback) {
+function sendData(param, host, callback) {
 	var req = null;
 	var options = {
-        	hostname: '127.0.0.1',          // NodeRED local HTTP server
+        	hostname: host,         // NodeRED local HTTP server
         	port: '1880',                   // NodeRED port
         	path: '/modbus?' + param,       // HTTP access point + parameters
         	method: 'GET',
@@ -71,7 +72,8 @@ LightAccessory.prototype = {
 	getPowerOn: function(callback) { 
 		var that = this; 
 		var Pilot = this.statusAddr;
-		getData(Pilot, function(returnValue) {
+		var host = this.host;
+		getData(Pilot, host, function(returnValue) {
 			if (returnValue) {
   				callback(null,1);
   			} else {
@@ -84,11 +86,12 @@ LightAccessory.prototype = {
 		var that = this;
 		var Pilot = this.statusAddr;
 		var Button = this.switchAddr;
-		getData(Pilot, function(returnValue) {
+		var host = this.host;
+		getData(Pilot, host, function(returnValue) {
 			var status = 0;
 			if (returnValue) status = 1;
 			if (status != powerCmd) {
-				getSetData(Pilot,Button,function(returnValue2) {
+				getSetData(Pilot, Button, host, function(returnValue2) {
 					that.light.getCharacteristic(Characteristic.On).getValue();
 					callback(null);
 				});	
